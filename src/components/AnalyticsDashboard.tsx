@@ -43,6 +43,22 @@ const AnalyticsDashboard = ({ data }: AnalyticsDashboardProps) => {
         }, 0)
       : 0;
 
+    // Dynamic labels based on detected fields
+    const labels = {
+      customers: emailField.toLowerCase().includes('customer') ? 'Total Customers' : 
+                 emailField.toLowerCase().includes('user') ? 'Total Users' :
+                 emailField.toLowerCase().includes('contact') ? 'Total Contacts' : 'Total Records',
+      revenue: amountFields.length > 0 ? 
+               amountFields[0].toLowerCase().includes('revenue') ? 'Total Revenue' :
+               amountFields[0].toLowerCase().includes('sales') ? 'Total Sales' :
+               amountFields[0].toLowerCase().includes('value') ? 'Total Value' :
+               amountFields[0].toLowerCase().includes('amount') ? 'Total Amount' : 'Total Value' : 'Total Value',
+      avgOrder: amountFields.length > 0 ?
+                amountFields[0].toLowerCase().includes('revenue') ? 'Avg Revenue' :
+                amountFields[0].toLowerCase().includes('sales') ? 'Avg Sale Value' :
+                amountFields[0].toLowerCase().includes('order') ? 'Avg Order Value' : 'Avg Value' : 'Avg Value'
+    };
+
     // RFM Analysis (simplified)
     const customerSegments = data.map((customer, index) => {
       const amount = amountFields.length > 0 ? parseFloat(customer[amountFields[0]]) || 0 : Math.random() * 1000;
@@ -105,6 +121,7 @@ const AnalyticsDashboard = ({ data }: AnalyticsDashboardProps) => {
       segmentData,
       monthlyData,
       fields,
+      labels,
       topSegment: segmentData.sort((a, b) => b.value - a.value)[0]?.name || 'Champions'
     };
   }, [data]);
@@ -136,7 +153,7 @@ const AnalyticsDashboard = ({ data }: AnalyticsDashboardProps) => {
           <Card className="p-6 shadow-card-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total Customers</p>
+                <p className="text-sm text-muted-foreground">{insights.labels.customers}</p>
                 <p className="text-3xl font-bold text-foreground">{insights.totalCustomers.toLocaleString()}</p>
               </div>
               <Users className="h-8 w-8 text-chart-1" />
@@ -146,7 +163,7 @@ const AnalyticsDashboard = ({ data }: AnalyticsDashboardProps) => {
           <Card className="p-6 shadow-card-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total Revenue</p>
+                <p className="text-sm text-muted-foreground">{insights.labels.revenue}</p>
                 <p className="text-3xl font-bold text-foreground">${insights.totalRevenue.toLocaleString()}</p>
               </div>
               <DollarSign className="h-8 w-8 text-chart-2" />
@@ -156,7 +173,7 @@ const AnalyticsDashboard = ({ data }: AnalyticsDashboardProps) => {
           <Card className="p-6 shadow-card-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Avg Order Value</p>
+                <p className="text-sm text-muted-foreground">{insights.labels.avgOrder}</p>
                 <p className="text-3xl font-bold text-foreground">${Math.round(insights.avgOrderValue)}</p>
               </div>
               <Target className="h-8 w-8 text-chart-3" />
