@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, ScatterChart, Scatter } from 'recharts';
 import { Users, DollarSign, Calendar, TrendingUp, Target, Star } from 'lucide-react';
+import { kmeans } from 'ml-kmeans';
 
 interface Customer {
   [key: string]: any;
@@ -11,6 +12,41 @@ interface Customer {
 interface AnalyticsDashboardProps {
   data: Customer[];
 }
+
+// Utility function to normalize data for clustering
+const normalizeData = (data: number[][]): number[][] => {
+  if (data.length === 0 || data[0].length === 0) return data;
+  
+  const numFeatures = data[0].length;
+  const means = new Array(numFeatures).fill(0);
+  const stds = new Array(numFeatures).fill(0);
+  
+  // Calculate means
+  for (let i = 0; i < data.length; i++) {
+    for (let j = 0; j < numFeatures; j++) {
+      means[j] += data[i][j];
+    }
+  }
+  for (let j = 0; j < numFeatures; j++) {
+    means[j] /= data.length;
+  }
+  
+  // Calculate standard deviations
+  for (let i = 0; i < data.length; i++) {
+    for (let j = 0; j < numFeatures; j++) {
+      stds[j] += Math.pow(data[i][j] - means[j], 2);
+    }
+  }
+  for (let j = 0; j < numFeatures; j++) {
+    stds[j] = Math.sqrt(stds[j] / data.length);
+    if (stds[j] === 0) stds[j] = 1; // Avoid division by zero
+  }
+  
+  // Normalize data
+  return data.map(row => 
+    row.map((value, j) => (value - means[j]) / stds[j])
+  );
+};
 
 const AnalyticsDashboard = ({ data }: AnalyticsDashboardProps) => {
   const insights = useMemo(() => {
@@ -59,38 +95,49 @@ const AnalyticsDashboard = ({ data }: AnalyticsDashboardProps) => {
                 amountFields[0].toLowerCase().includes('order') ? 'Avg Order Value' : 'Avg Value' : 'Avg Value'
     };
 
-    // RFM Analysis (simplified)
-    const customerSegments = data.map((customer, index) => {
-      const amount = amountFields.length > 0 ? parseFloat(customer[amountFields[0]]) || 0 : Math.random() * 1000;
-      const recency = Math.floor(Math.random() * 365); // Days since last purchase
-      const frequency = Math.floor(Math.random() * 20) + 1; // Number of purchases
-      
-      // Simple scoring (1-5)
-      const rScore = recency < 30 ? 5 : recency < 90 ? 4 : recency < 180 ? 3 : recency < 365 ? 2 : 1;
-      const fScore = frequency > 15 ? 5 : frequency > 10 ? 4 : frequency > 5 ? 3 : frequency > 2 ? 2 : 1;
-      const mScore = amount > 1000 ? 5 : amount > 500 ? 4 : amount > 200 ? 3 : amount > 50 ? 2 : 1;
-      
-      // Segment assignment
-      let segment = 'New Customer';
-      const avgScore = (rScore + fScore + mScore) / 3;
-      
-      if (avgScore >= 4.5) segment = 'Champions';
-      else if (avgScore >= 4) segment = 'Loyal Customers';
-      else if (avgScore >= 3.5) segment = 'Potential Loyalists';
-      else if (avgScore >= 3) segment = 'At Risk';
-      else if (avgScore >= 2) segment = 'Need Attention';
-      else segment = 'Lost Customers';
+    // K-Means Clustering for Customer Segmentation
+    // Identify numeric fields for clustering
+    const numericFields = fields.filter(field => {
+      const values = data.slice(0, 100).map(row => row[field]); // Sample first 100 rows
+      return values.some(val => !isNaN(parseFloat(val)) && isFinite(val));
+    });
 
+    // Prepare data for clustering
+    const clusteringData = data.map(customer => {
+      return numericFields.map(field => {
+        const value = parseFloat(customer[field]);
+        return isNaN(value) ? 0 : value;
+      });
+    });
+
+    // Normalize data for better clustering
+    const normalizedData = clusteringData.length > 0 ? normalizeData(clusteringData) : [];
+    
+    // Perform K-Means clustering (k=5 for meaningful segments)
+    const k = Math.min(5, data.length);
+    const clusterResults = normalizedData.length > 0 ? kmeans(normalizedData, k, { maxIterations: 100 }) : null;
+    
+    // Create customer segments with cluster assignments
+    const segmentNames = ['High Value', 'Loyal Customers', 'At Risk', 'New Customers', 'Lost Customers'];
+    
+    const customerSegments = data.map((customer, index) => {
+      const clusterId = clusterResults ? clusterResults.clusters[index] : 0;
+      const segment = segmentNames[clusterId] || `Cluster ${clusterId + 1}`;
+      
+      // Calculate customer metrics for display
+      const amount = amountFields.length > 0 ? parseFloat(customer[amountFields[0]]) || 0 : 0;
+      
       return {
         ...customer,
         id: index + 1,
-        recency,
-        frequency,
+        cluster: clusterId,
+        segment,
         monetary: amount,
-        rScore,
-        fScore,
-        mScore,
-        segment
+        // Include all numeric features for visualization
+        features: numericFields.reduce((acc, field) => {
+          acc[field] = parseFloat(customer[field]) || 0;
+          return acc;
+        }, {} as Record<string, number>)
       };
     });
 
@@ -113,6 +160,14 @@ const AnalyticsDashboard = ({ data }: AnalyticsDashboardProps) => {
       revenue: Math.floor(Math.random() * 10000) + 5000
     }));
 
+    // Cluster visualization data (using first two numeric features)
+    const clusterVisualizationData = customerSegments.map((customer, index) => ({
+      x: numericFields.length > 0 ? customer.features[numericFields[0]] || 0 : Math.random() * 100,
+      y: numericFields.length > 1 ? customer.features[numericFields[1]] || 0 : Math.random() * 100,
+      cluster: customer.cluster,
+      segment: customer.segment
+    }));
+
     return {
       totalCustomers,
       totalRevenue,
@@ -120,6 +175,8 @@ const AnalyticsDashboard = ({ data }: AnalyticsDashboardProps) => {
       customerSegments,
       segmentData,
       monthlyData,
+      clusterVisualizationData,
+      numericFields,
       fields,
       labels,
       topSegment: segmentData.sort((a, b) => b.value - a.value)[0]?.name || 'Champions'
@@ -144,8 +201,8 @@ const AnalyticsDashboard = ({ data }: AnalyticsDashboardProps) => {
     <div className="py-20 bg-muted/30">
       <div className="container mx-auto px-6">
         <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-foreground mb-4">Customer Analytics Dashboard</h2>
-          <p className="text-xl text-muted-foreground">Insights and segments generated from your data</p>
+          <h2 className="text-4xl font-bold text-foreground mb-4">Customer Segmentation Dashboard</h2>
+          <p className="text-xl text-muted-foreground">K-Means clustering analysis and insights from your data</p>
         </div>
 
         {/* Key Metrics */}
@@ -191,11 +248,11 @@ const AnalyticsDashboard = ({ data }: AnalyticsDashboardProps) => {
           </Card>
         </div>
 
-        {/* Charts Row */}
+        {/* Charts Grid */}
         <div className="grid lg:grid-cols-2 gap-8 mb-12">
           {/* Customer Segments Pie Chart */}
           <Card className="p-6 shadow-card-shadow">
-            <h3 className="text-xl font-semibold text-foreground mb-6">Customer Segments</h3>
+            <h3 className="text-xl font-semibold text-foreground mb-6">Customer Segments Distribution</h3>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
@@ -217,21 +274,60 @@ const AnalyticsDashboard = ({ data }: AnalyticsDashboardProps) => {
             </ResponsiveContainer>
           </Card>
 
-          {/* Monthly Trends */}
+          {/* K-Means Cluster Visualization */}
           <Card className="p-6 shadow-card-shadow">
-            <h3 className="text-xl font-semibold text-foreground mb-6">Monthly Trends</h3>
+            <h3 className="text-xl font-semibold text-foreground mb-6">
+              K-Means Clustering Visualization
+              {insights.numericFields.length >= 2 && (
+                <span className="text-sm font-normal text-muted-foreground block">
+                  {insights.numericFields[0]} vs {insights.numericFields[1]}
+                </span>
+              )}
+            </h3>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={insights.monthlyData}>
+              <ScatterChart data={insights.clusterVisualizationData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Line type="monotone" dataKey="customers" stroke="hsl(var(--chart-1))" strokeWidth={3} />
-                <Line type="monotone" dataKey="revenue" stroke="hsl(var(--chart-2))" strokeWidth={3} />
-              </LineChart>
+                <XAxis 
+                  dataKey="x" 
+                  name={insights.numericFields[0] || 'Feature 1'}
+                  type="number"
+                />
+                <YAxis 
+                  dataKey="y" 
+                  name={insights.numericFields[1] || 'Feature 2'}
+                  type="number"
+                />
+                <Tooltip 
+                  formatter={(value, name) => [value, name]}
+                  labelFormatter={(value) => `Segment: ${insights.clusterVisualizationData[0]?.segment || 'Unknown'}`}
+                />
+                {[0, 1, 2, 3, 4].map(clusterId => (
+                  <Scatter
+                    key={clusterId}
+                    name={`Cluster ${clusterId + 1}`}
+                    data={insights.clusterVisualizationData.filter(d => d.cluster === clusterId)}
+                    fill={COLORS[clusterId % COLORS.length]}
+                  />
+                ))}
+              </ScatterChart>
             </ResponsiveContainer>
           </Card>
         </div>
+
+        {/* Monthly Trends - Full Width */}
+        <Card className="p-6 shadow-card-shadow mb-12">
+          <h3 className="text-xl font-semibold text-foreground mb-6">Monthly Trends</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={insights.monthlyData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis />
+              <Tooltip />
+              <Line type="monotone" dataKey="customers" stroke="hsl(var(--chart-1))" strokeWidth={3} />
+              <Line type="monotone" dataKey="revenue" stroke="hsl(var(--chart-2))" strokeWidth={3} />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
 
         {/* Segment Details */}
         <Card className="p-8 shadow-card-shadow">
