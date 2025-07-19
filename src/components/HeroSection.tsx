@@ -40,7 +40,7 @@ const HeroSection = () => {
         <nav className="flex items-center justify-between mb-20">
           <div className="flex items-center space-x-2">
             <BarChart3 className="h-8 w-8 text-primary-foreground" />
-            <span className="text-2xl font-bold text-primary-foreground">SegmentSavvy</span>
+            <span className="text-2xl font-bold text-primary-foreground">Cluster</span>
           </div>
           <Button variant="accent" size="lg">
             Get Started
