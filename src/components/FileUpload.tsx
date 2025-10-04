@@ -1,18 +1,39 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Upload, FileText, X, CheckCircle } from 'lucide-react';
+import { Upload, FileText, X, CheckCircle, History } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FileUploadProps {
   onFileUpload: (data: any[]) => void;
+  userId: string;
 }
 
-const FileUpload = ({ onFileUpload }: FileUploadProps) => {
+const FileUpload = ({ onFileUpload, userId }: FileUploadProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [previousUploads, setPreviousUploads] = useState<any[]>([]);
   const { toast } = useToast();
+
+  // Load previous uploads
+  useEffect(() => {
+    const loadPreviousUploads = async () => {
+      const { data, error } = await supabase
+        .from('csv_uploads')
+        .select('*')
+        .eq('user_id', userId)
+        .order('uploaded_at', { ascending: false })
+        .limit(5);
+
+      if (!error && data) {
+        setPreviousUploads(data);
+      }
+    };
+
+    loadPreviousUploads();
+  }, [userId]);
 
   const parseCSV = useCallback((text: string) => {
     const lines = text.split('\n').filter(line => line.trim());
@@ -52,9 +73,37 @@ const FileUpload = ({ onFileUpload }: FileUploadProps) => {
         throw new Error('No data found in CSV file');
       }
 
+      // Save to database
+      const headers = Object.keys(data[0]);
+      const { error: dbError } = await supabase
+        .from('csv_uploads')
+        .insert({
+          user_id: userId,
+          filename: file.name,
+          file_data: data,
+          row_count: data.length,
+          column_count: headers.length
+        });
+
+      if (dbError) {
+        throw new Error('Failed to save to database');
+      }
+
       setUploadedFile(file);
       onFileUpload(data);
       
+      // Refresh previous uploads
+      const { data: uploads } = await supabase
+        .from('csv_uploads')
+        .select('*')
+        .eq('user_id', userId)
+        .order('uploaded_at', { ascending: false })
+        .limit(5);
+      
+      if (uploads) {
+        setPreviousUploads(uploads);
+      }
+
       toast({
         title: "File uploaded successfully!",
         description: `Parsed ${data.length} records from ${file.name}`,
@@ -68,7 +117,7 @@ const FileUpload = ({ onFileUpload }: FileUploadProps) => {
     } finally {
       setIsLoading(false);
     }
-  }, [parseCSV, onFileUpload, toast]);
+  }, [parseCSV, onFileUpload, toast, userId]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -124,6 +173,16 @@ const FileUpload = ({ onFileUpload }: FileUploadProps) => {
     toast({
       title: "Sample data loaded!",
       description: `Generated ${sampleData.length} sample customer records`,
+    });
+  }, [onFileUpload, toast]);
+
+  const loadPreviousUpload = useCallback((upload: any) => {
+    setUploadedFile(new File(['previous'], upload.filename, { type: 'text/csv' }));
+    onFileUpload(upload.file_data);
+    
+    toast({
+      title: "Previous upload loaded!",
+      description: `Loaded ${upload.row_count} records from ${upload.filename}`,
     });
   }, [onFileUpload, toast]);
 
@@ -217,6 +276,35 @@ const FileUpload = ({ onFileUpload }: FileUploadProps) => {
               Load Sample Data
             </Button>
           </div>
+
+          {/* Previous Uploads */}
+          {previousUploads.length > 0 && (
+            <div className="mt-12">
+              <div className="flex items-center space-x-2 mb-4">
+                <History className="h-5 w-5 text-muted-foreground" />
+                <h3 className="text-lg font-semibold">Recent Uploads</h3>
+              </div>
+              <div className="space-y-2">
+                {previousUploads.map((upload) => (
+                  <Card 
+                    key={upload.id} 
+                    className="p-4 hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => loadPreviousUpload(upload)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{upload.filename}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {upload.row_count} rows • {upload.column_count} columns • {new Date(upload.uploaded_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <FileText className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
