@@ -1,9 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { BarChart3, Users, TrendingUp, Database, Upload, Brain } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import heroImage from "@/assets/hero-dashboard.jpg";
 
 const HeroSection = () => {
+  const navigate = useNavigate();
+  
   const features = [
     {
       icon: Users,
@@ -42,7 +45,7 @@ const HeroSection = () => {
             <BarChart3 className="h-8 w-8 text-primary-foreground" />
             <span className="text-2xl font-bold text-primary-foreground">Cluster</span>
           </div>
-          <Button variant="accent" size="lg">
+          <Button variant="accent" size="lg" onClick={() => navigate("/auth")}>
             Get Started
           </Button>
         </nav>
