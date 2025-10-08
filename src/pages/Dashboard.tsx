@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { LogOut, BarChart3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-const Index = () => {
+const Dashboard = () => {
   const [customerData, setCustomerData] = useState<any[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,7 +48,7 @@ const Index = () => {
       title: "Logged out",
       description: "You have been logged out successfully"
     });
-    navigate('/auth');
+    navigate('/');
   };
 
   if (loading) {
@@ -91,4 +91,4 @@ const Index = () => {
   );
 };
 
-export default Index;
+export default Dashboard;
