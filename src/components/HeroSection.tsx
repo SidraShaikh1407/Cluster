@@ -1,11 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BarChart3, Users, TrendingUp, Database, Upload, Brain } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { toast } from "sonner";
 import heroImage from "@/assets/hero-dashboard.jpg";
 
 const HeroSection = () => {
   const navigate = useNavigate();
+  const [showDemo, setShowDemo] = useState(false);
   
   const features = [
     {
@@ -25,8 +29,13 @@ const HeroSection = () => {
     }
   ];
 
-  const scrollToUpload = () => {
-    document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth' });
+  const handleUploadClick = () => {
+    toast.info("Please login first to upload your data");
+    setTimeout(() => navigate("/auth"), 1500);
+  };
+
+  const handleDemoClick = () => {
+    setShowDemo(true);
   };
 
   return (
@@ -70,12 +79,17 @@ const HeroSection = () => {
               variant="hero" 
               size="lg" 
               className="text-lg px-8 py-4"
-              onClick={scrollToUpload}
+              onClick={handleUploadClick}
             >
               <Upload className="mr-2 h-5 w-5" />
               Upload Your Data
             </Button>
-            <Button variant="outline" size="lg" className="text-lg px-8 py-4 bg-white/10 border-white/20 text-primary-foreground hover:bg-white/20">
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className="text-lg px-8 py-4 bg-white/10 border-white/20 text-primary-foreground hover:bg-white/20"
+              onClick={handleDemoClick}
+            >
               <Database className="mr-2 h-5 w-5" />
               View Demo
             </Button>
@@ -106,6 +120,76 @@ const HeroSection = () => {
           ))}
         </div>
       </div>
+
+      {/* Demo Dialog */}
+      <Dialog open={showDemo} onOpenChange={setShowDemo}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Demo: Customer Analytics Dashboard</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div className="grid md:grid-cols-3 gap-4">
+              <Card className="p-6">
+                <div className="flex items-center gap-4">
+                  <Users className="h-8 w-8 text-primary" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Customers</p>
+                    <p className="text-2xl font-bold">1,234</p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-6">
+                <div className="flex items-center gap-4">
+                  <TrendingUp className="h-8 w-8 text-accent" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Avg Purchase</p>
+                    <p className="text-2xl font-bold">$156</p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-6">
+                <div className="flex items-center gap-4">
+                  <Brain className="h-8 w-8 text-secondary" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Segments</p>
+                    <p className="text-2xl font-bold">5</p>
+                  </div>
+                </div>
+              </Card>
+            </div>
+            
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Customer Segments</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                  <span className="font-medium">Champions</span>
+                  <span className="text-sm text-muted-foreground">High value, frequent buyers</span>
+                  <span className="font-bold">287 customers</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                  <span className="font-medium">Loyal Customers</span>
+                  <span className="text-sm text-muted-foreground">Regular purchasers</span>
+                  <span className="font-bold">456 customers</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                  <span className="font-medium">At Risk</span>
+                  <span className="text-sm text-muted-foreground">Haven't purchased recently</span>
+                  <span className="font-bold">189 customers</span>
+                </div>
+              </div>
+            </Card>
+
+            <div className="text-center">
+              <p className="text-muted-foreground mb-4">
+                Upload your own CSV data to see real insights from your customers!
+              </p>
+              <Button onClick={() => navigate("/auth")}>
+                Get Started Now
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
