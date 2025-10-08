@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Upload, FileText, X, CheckCircle, History } from 'lucide-react';
+import { Upload, FileText, X, CheckCircle, History, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -186,6 +186,32 @@ const FileUpload = ({ onFileUpload, userId }: FileUploadProps) => {
     });
   }, [onFileUpload, toast]);
 
+  const deleteUpload = useCallback(async (uploadId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    try {
+      const { error } = await supabase
+        .from('csv_uploads')
+        .delete()
+        .eq('id', uploadId);
+
+      if (error) throw error;
+
+      setPreviousUploads(prev => prev.filter(upload => upload.id !== uploadId));
+      
+      toast({
+        title: "Upload deleted",
+        description: "The upload has been deleted successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error deleting upload",
+        description: error instanceof Error ? error.message : "Failed to delete upload",
+        variant: "destructive"
+      });
+    }
+  }, [toast]);
+
   return (
     <div id="upload-section" className="py-20 bg-background">
       <div className="container mx-auto px-6">
@@ -292,13 +318,23 @@ const FileUpload = ({ onFileUpload, userId }: FileUploadProps) => {
                     onClick={() => loadPreviousUpload(upload)}
                   >
                     <div className="flex items-center justify-between">
-                      <div>
+                      <div className="flex-1">
                         <p className="font-medium">{upload.filename}</p>
                         <p className="text-sm text-muted-foreground">
                           {upload.row_count} rows • {upload.column_count} columns • {new Date(upload.uploaded_at).toLocaleDateString()}
                         </p>
                       </div>
-                      <FileText className="h-5 w-5 text-muted-foreground" />
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-5 w-5 text-muted-foreground" />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => deleteUpload(upload.id, e)}
+                          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </Card>
                 ))}
