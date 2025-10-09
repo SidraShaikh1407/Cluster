@@ -342,25 +342,27 @@ const AnalyticsDashboard = ({ data }: AnalyticsDashboardProps) => {
           {/* Customer Segments Pie Chart */}
           <Card className="p-6 shadow-card-shadow">
             <h3 className="text-xl font-semibold text-foreground mb-6">Customer Segments Distribution</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={insights.segmentData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percentage }) => `${name} (${percentage}%)`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {insights.segmentData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            <div className="h-[400px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                  <Pie
+                    data={insights.segmentData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={true}
+                    label={({ name, percentage }) => `${name} (${percentage}%)`}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {insights.segmentData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </Card>
 
           {/* K-Means Cluster Visualization */}
@@ -373,33 +375,35 @@ const AnalyticsDashboard = ({ data }: AnalyticsDashboardProps) => {
                 </span>
               )}
             </h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <ScatterChart data={insights.clusterVisualizationData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="x" 
-                  name={insights.numericFields[0] || 'Feature 1'}
-                  type="number"
-                />
-                <YAxis 
-                  dataKey="y" 
-                  name={insights.numericFields[1] || 'Feature 2'}
-                  type="number"
-                />
-                <Tooltip 
-                  formatter={(value, name) => [value, name]}
-                  labelFormatter={(value) => `Segment: ${insights.clusterVisualizationData[0]?.segment || 'Unknown'}`}
-                />
-                {[0, 1, 2, 3, 4].map(clusterId => (
-                  <Scatter
-                    key={clusterId}
-                    name={`Cluster ${clusterId + 1}`}
-                    data={insights.clusterVisualizationData.filter(d => d.cluster === clusterId)}
-                    fill={COLORS[clusterId % COLORS.length]}
+            <div className="h-[400px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <ScatterChart data={insights.clusterVisualizationData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="x" 
+                    name={insights.numericFields[0] || 'Feature 1'}
+                    type="number"
                   />
-                ))}
-              </ScatterChart>
-            </ResponsiveContainer>
+                  <YAxis 
+                    dataKey="y" 
+                    name={insights.numericFields[1] || 'Feature 2'}
+                    type="number"
+                  />
+                  <Tooltip 
+                    formatter={(value, name) => [value, name]}
+                    labelFormatter={(value) => `Segment: ${insights.clusterVisualizationData[0]?.segment || 'Unknown'}`}
+                  />
+                  {[0, 1, 2, 3, 4].map(clusterId => (
+                    <Scatter
+                      key={clusterId}
+                      name={`Cluster ${clusterId + 1}`}
+                      data={insights.clusterVisualizationData.filter(d => d.cluster === clusterId)}
+                      fill={COLORS[clusterId % COLORS.length]}
+                    />
+                  ))}
+                </ScatterChart>
+              </ResponsiveContainer>
+            </div>
           </Card>
         </div>
 
